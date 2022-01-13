@@ -52,23 +52,23 @@ loadData().then(data => {
     d3.select('#range').on('change', function(){ 
         year = d3.select(this).property('value');
         yearLable.html(year);
-        updateScattePlot();
+        updateScatterPlot();
         updateBar();
     });
 
     d3.select('#radius').on('change', function(){ 
         rParam = d3.select(this).property('value');
-        updateScattePlot();
+        updateScatterPlot();
     });
 
     d3.select('#x').on('change', function(){ 
         xParam = d3.select(this).property('value');
-        updateScattePlot();
+        updateScatterPlot();
     });
 
     d3.select('#y').on('change', function(){ 
         yParam = d3.select(this).property('value');
-        updateScattePlot();
+        updateScatterPlot();
     });
 
     d3.select('#param').on('change', function(){ 
@@ -80,12 +80,45 @@ loadData().then(data => {
         return;
     }
 
-    function updateScattePlot(){
-        return;
-    }
+    function updateScatterPlot(){
+
+        // scale x coordinate
+        const xValues = data.map(d => Number(d[xParam][year]));
+        const xDomain = d3.extent(xValues); 
+        x.domain(xDomain); 
+
+        // scale y coordinate
+        const yValues = data.map(d => Number(d[yParam][year])); 
+        const yDomain = d3.extent(yValues);
+        y.domain(yDomain);
+
+        // set and scale circle radius
+        const rValues = data.map(d => Number(d[rParam][year]));
+        const rDomain = d3.extent(rValues);
+        radiusScale.domain(rDomain)
+
+        // match color and region
+        const regionDomain = d3.map(data, d => d["region"]).keys()
+        colorScale.domain(regionDomain)
+        
+        // create or update a circle
+        const selection = scatterPlot.selectAll('circle').data(data); 
+        const circles = selection.enter()
+                                .append('circle'); 
+
+        selection.merge(circles)
+                .attr('r', d => radiusScale(Number(d[rParam][year])))
+                .attr('cx', d => x(Number(d[xParam][year])))
+                .attr('cy', d => y(Number(d[yParam][year])))
+                .style('fill', d => colorScale(d["region"]));
+
+        // draw x and y axis
+        xAxis.call(d3.axisBottom(x))
+        yAxis.call(d3.axisLeft(y))
+    }   
 
     updateBar();
-    updateScattePlot();
+    updateScatterPlot();
 });
 
 
