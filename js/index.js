@@ -47,7 +47,7 @@ const radiusScale = d3.scaleSqrt().range([10, 30]);
 
 loadData().then(data => {
 
-    colorScale.domain(d3.set(data.map(d=>d.region)).values());
+    colorScale.domain(new Set(data.map(d=>d.region)).values());
 
     d3.select('#range').on('change', function(){ 
         year = d3.select(this).property('value');
@@ -75,9 +75,35 @@ loadData().then(data => {
         param = d3.select(this).property('value');
         updateBar();
     });
-
+    
     function updateBar(){
-        return;
+        // get array of object region: mean value
+        const barRegion = Array.from(d3.rollup(data, 
+                                    v => d3.mean(v, d => d[param][year]), d => d["region"]),
+                                    ([key, value]) => ({key, value}))
+        
+        // get keys (region)
+        regionDomain = barRegion.map(k => k.key)
+        xBar.domain(regionDomain);
+        
+        // get mean values
+        meanDomain = barRegion.map(v => v.value)
+        yBar.domain([0, d3.max(meanDomain)])
+        
+        // create or update rectangle of barchart
+        const selection = barChart.selectAll('rect').data(barRegion); 
+        const rectangle = selection.enter()
+                                    .append('rect'); 
+        selection.merge(rectangle)
+                .attr('x',  d => xBar(d.key))
+                .attr('y',  d => yBar(d.value))
+                .attr('width', xBar.bandwidth())
+                .attr("height", r => height - margin - yBar(r.value))
+                .style('fill', r => colorScale(r.key));
+        
+        // draw x and y axis
+        xBarAxis.call(d3.axisBottom(xBar))
+        yBarAxis.call(d3.axisLeft(yBar))
     }
 
     function updateScatterPlot(){
