@@ -104,6 +104,15 @@ loadData().then(data => {
         // draw x and y axis
         xBarAxis.call(d3.axisBottom(xBar))
         yBarAxis.call(d3.axisLeft(yBar))
+        
+        // set opacity by click on barchart
+        selection.on("click", (event, d) => {
+                    clickedRegion = d.key
+                    selection.transition()
+                            .style('opacity', d => d.key == clickedRegion ? 1 : 0.4);
+                    scatterPlot.selectAll('circle').transition()
+                            .style('opacity', d => d.region == clickedRegion ? 0.6 : 0);
+                })
     }
 
     function updateScatterPlot(){
