@@ -36,6 +36,9 @@ const yBar = d3.scaleLinear().range([height-margin, margin])
 const xAxis = scatterPlot.append('g').attr('transform', `translate(0, ${height-margin})`);
 const yAxis = scatterPlot.append('g').attr('transform', `translate(${margin*2}, 0)`);
 
+const xLine = d3.scaleTime().range([margin * 2, width - margin]);
+const yLine = d3.scaleLinear().range([height - margin, margin]);
+
 const xLineAxis = lineChart.append('g').attr('transform', `translate(0, ${height-margin})`);
 const yLineAxis = lineChart.append('g').attr('transform', `translate(${margin*2}, 0)`);
 
@@ -75,7 +78,15 @@ loadData().then(data => {
         param = d3.select(this).property('value');
         updateBar();
     });
-    
+
+    d3.select('#p').on('change', function(){ 
+        lineParam = d3.select(this).property('value');
+        updateLinePlot();
+    });
+
+    updateBar();
+    updateScatterPlot()
+
     function updateBar(){
         // get array of object region: mean value
         const barRegion = Array.from(d3.rollup(data, 
@@ -108,8 +119,10 @@ loadData().then(data => {
         // set opacity by click on barchart
         selection.on("click", (event, d) => {
                     clickedRegion = d.key
+
                     selection.transition()
                             .style('opacity', d => d.key == clickedRegion ? 1 : 0.4);
+
                     scatterPlot.selectAll('circle').transition()
                             .style('opacity', d => d.region == clickedRegion ? 0.6 : 0);
                 })
@@ -131,10 +144,6 @@ loadData().then(data => {
         const rValues = data.map(d => Number(d[rParam][year]));
         const rDomain = d3.extent(rValues);
         radiusScale.domain(rDomain)
-
-        // match color and region
-        const regionDomain = d3.map(data, d => d["region"]).keys()
-        colorScale.domain(regionDomain)
         
         // create or update a circle
         const selection = scatterPlot.selectAll('circle').data(data); 
@@ -145,12 +154,65 @@ loadData().then(data => {
                 .attr('r', d => radiusScale(Number(d[rParam][year])))
                 .attr('cx', d => x(Number(d[xParam][year])))
                 .attr('cy', d => y(Number(d[yParam][year])))
+                .attr('stroke-width', 1)
                 .style('fill', d => colorScale(d["region"]));
 
         // draw x and y axis
         xAxis.call(d3.axisBottom(x))
         yAxis.call(d3.axisLeft(y))
-    }   
+
+        // select circle by click
+        selection.on("click", (event, d) => {
+                    clickedCountry = d.country
+
+                    scatterPlot.selectAll('circle')
+                                .filter(d => d.country == clickedCountry)
+                                .raise()
+
+                    scatterPlot.selectAll('circle')
+                                .transition()
+                                .attr('stroke-width', d => d.country === clickedCountry ? 2 : 1);
+                    
+                                updateLinePlot()             
+        })
+    }
+    function updateLinePlot() {
+
+        // select country
+        const selectedCountry = data.findIndex(d => d.country === clickedCountry);
+        let data_entries = Object.entries(data[selectedCountry][lineParam]).slice(0, -5)
+
+        // scale x coordinate
+        const xValues = data_entries.map(d => new Date(d[0]));
+        const xDomain = d3.extent(xValues); 
+        xLine.domain(xDomain); 
+
+        // scale y coordinate
+        const yValues = data_entries.map(d => Number(d[1]));
+        const yDomain = d3.extent(yValues);
+        console.log(data_entries, yDomain)
+        yLine.domain(yDomain);
+        
+        // Set params for line chart
+        lineChart.selectAll('path').remove();
+
+        // Set country name
+        countryName.html(clickedCountry);
+
+        // create or update plot line
+        const selection = lineChart.append('path').datum(data_entries); 
+
+        selection.attr("fill", "none")
+                .attr("stroke", "blue")
+                .attr("stroke-width", 2.5)
+                .attr('stroke-width', 2)
+                .attr("d", d3.line().x(d => xLine(new Date(d[0]))).y(d => yLine(parseFloat(d[1]))));
+
+        // draw x and y axis
+        xLineAxis.call(d3.axisBottom(xLine));
+        yLineAxis.call(d3.axisLeft(yLine));
+
+    }
 
     updateBar();
     updateScatterPlot();
